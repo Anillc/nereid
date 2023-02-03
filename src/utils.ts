@@ -45,6 +45,20 @@ export async function *select<T>(promises: Promise<T>[]) {
   }
 }
 
-export function sample<T>(arr: T[]) {
-  return arr[Math.floor(Math.random() * arr.length)]
+export function sample<T extends { weight?: number }>(array: T[]): T {
+  const weight = array.map(element => element.weight)
+  for (let i = 1; i < weight.length; i++) {
+    weight[i] += weight[i - 1]
+  }
+  const random = Math.random() * weight[weight.length - 1]
+  return array.find((_, i) => weight[i] > random)
+}
+
+export function zip<T, U>(ts: T[], us: U[]): [T, U][] {
+  const length = Math.min(ts.length, us.length)
+  const result: [T, U][] = []
+  for (let i = 0; i < length; i++) {
+    result.push([ts[i], us[i]])
+  }
+  return result
 }
