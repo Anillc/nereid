@@ -17,6 +17,9 @@ export namespace Nereid {
     name: string
     hash: string
     size: number
+    owner: string
+    group: string
+    perm: number
   }
 
   export interface File extends NodeCommon {

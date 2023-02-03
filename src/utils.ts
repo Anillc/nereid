@@ -1,3 +1,6 @@
+import { createReadStream } from 'fs'
+import { createHash } from 'crypto'
+import { basename } from 'path'
 import { Nereid } from '.'
 
 export function visit(
@@ -59,6 +62,32 @@ export function zip<T, U>(ts: T[], us: U[]): [T, U][] {
   const result: [T, U][] = []
   for (let i = 0; i < length; i++) {
     result.push([ts[i], us[i]])
+  }
+  return result
+}
+
+const base32Chars = '0123456789abcdfghijklmnpqrsvwxyz'
+export async function hash(file: string) {
+  const stream = createReadStream(file)
+  const sha256 = createHash('sha256')
+  stream.pipe(sha256)
+  await new Promise(resolve => stream.on('close', resolve))
+  const description = `source:sha256:${sha256.digest('hex')}:/nereid:${basename(file)}`
+  const hash = createHash('sha256').update(description).digest()
+  const hashSize = 20
+  const truncation = Buffer.alloc(hashSize)
+  for (let i = 0; i < 32; i++) {
+    truncation[i % hashSize] ^= hash[i]
+  }
+  let result = ''
+  for (let n = 32 - 1; n >= 0; n--) {
+    const b = n * 5
+    const i = Math.floor(b / 8)
+    const j = b % 8
+    const c =
+      (truncation[i] >> j)
+      | (i >= hashSize - 1 ? 0 : truncation[i + 1] << (8 - j))
+    result += base32Chars[c & 0x1f]
   }
   return result
 }
