@@ -28,8 +28,7 @@ export interface Task {
   downloaded: number
   stop(): void
   pause(): void
-  // pause should reject the promise
-  // clean up all callbacks in download function
+  // this promise should always resolved
   // this function will start download
   promise(): Promise<Task>
 }

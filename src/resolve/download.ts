@@ -17,7 +17,7 @@ export async function* download<I>(
   composables.forEach(composable => composable.retry = options.retry)
   const tasks: Task[] = []
   const done: Task[] = []
-  while (composables.length !== 0) {
+  while (composables.length !== 0 && tasks.length !== 0) {
     while (tasks.length < options.maxTaskCount && composables.length !== 0) {
       const source = sample(sources)
       tasks.push(source.task(composables.shift()))
@@ -30,17 +30,16 @@ export async function* download<I>(
     if (state.status as any === 'canceled') return
 
     const resolves: Function[] = []
-    const [task, i] = await Promise.any(tasks.map((task, i) => {
+    const [task, i] = await Promise.race(tasks.map((task, i) => {
       state.emit('download/composable/start', task.composable, task.source)
-      return new Promise<[Task, number]>((resolve, reject) => {
+      return new Promise<[Task, number]>(resolve => {
         resolves.push(resolve)
-        task.promise()
-          .then(task => { resolve([task, i]) })
-          .catch(reject)
+        task.promise().then(task => { resolve([task, i]) })
       })
-    }))
-    // resolve all promises to avoid memory leak
-    resolves.forEach(resolve => resolve())
+    })).finally(() => {
+      // resolve all promises to avoid memory leak
+      resolves.forEach(resolve => resolve())
+    })
 
     switch (task.status) {
       case 'failed':
@@ -65,7 +64,7 @@ export async function* download<I>(
         state.emit('download/composable/done', task.composable, task.source)
         break
       case 'pause':
-        // do nothing
+        // unreachable
         break
       default:
         throw new Error('Unknown error.')
