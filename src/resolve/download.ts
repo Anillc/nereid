@@ -3,7 +3,7 @@ import { State, Source, ResolveOptions, Task } from '.'
 import { Nereid } from '..'
 import { exists, sample, validate } from '../utils'
 
-export async function* download<I>(
+export async function *download<I>(
   state: State,
   sources: Source<I>[],
   composables: Nereid.Composable[],

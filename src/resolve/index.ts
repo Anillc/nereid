@@ -155,12 +155,10 @@ async function startSync(state: State, srcs: string[], bucket: string, options: 
     }
   })
 
-  const checker = select(checks)
-  let checkResult: IteratorResult<CheckResult>
-  while (!(checkResult = await checker.next()).done) {
-    if (checkResult.value) break
-  }
-  if (!checkResult) {
+  const checked = (await Promise.all(checks)).filter(source => source)
+  const avaliable = checked.map(source => source[2])
+
+  if (avaliable.length === 0) {
     state.status = 'failed'
     const error = new Error('No source is avaliable.')
     state.emit('check/failed', error)
@@ -168,12 +166,12 @@ async function startSync(state: State, srcs: string[], bucket: string, options: 
     return
   }
 
-  const checked = (await Promise.all(checks)).filter(source => source)
-  const avaliable = checked.map(source => source[2])
   const composables = checked[0][1]
   const downloader = download(state, avaliable, composables, options)
   downloader.next()
-  state.on('download/done', () => {
-    link()
+  state.on('download/done', async () => {
+    await link(state, checked[0][0], bucket, options)
+    state.status = 'done'
+    state.emit('done')
   })
 }

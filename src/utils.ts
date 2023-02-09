@@ -28,7 +28,7 @@ export async function visitAsync(
 }
 
 export function closure(index: Nereid.Index<unknown>, bucket: string, hash?: string) {
-  const node = index?.bucket?.[bucket]
+  const node = index?.buckets?.[bucket]
   if (!node) return
   // a not and a logical implication (<=)
   if (!!hash > (node.hash === hash)) return
@@ -69,12 +69,22 @@ export function zip<T, U>(ts: T[], us: U[]): [T, U][] {
 }
 
 const base32Chars = '0123456789abcdfghijklmnpqrsvwxyz'
-export async function nixHash(file: string) {
+export async function nixHashFile(file: string) {
   const stream = createReadStream(file)
   const sha256 = createHash('sha256')
   stream.pipe(sha256)
   await new Promise(resolve => stream.on('close', resolve))
-  const description = `source:sha256:${sha256.digest('hex')}:/nereid:${basename(file)}`
+  return nixHash(sha256.digest('hex'))
+}
+
+export async function nixHashText(text: string) {
+  const sha256 = createHash('sha256')
+  sha256.update(text)
+  return nixHash(sha256.digest('hex'))
+}
+
+function nixHash(sha256: string) {
+  const description = `source:sha256:${sha256}:/nereid/store`
   const hash = createHash('sha256').update(description).digest()
   const hashSize = 20
   const truncation = Buffer.alloc(hashSize)
@@ -96,7 +106,7 @@ export async function nixHash(file: string) {
 
 export async function validate(path: string, hash: string, mode: string) {
   if (mode !== 'nix') throw new Error('unsupported hash mode')
-  const result = await nixHash(path)
+  const result = await nixHashFile(path)
   return result === hash
 }
 

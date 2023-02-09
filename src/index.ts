@@ -2,7 +2,7 @@ export namespace Nereid {
   export interface Index<I> {
     version: 1
     hashMode: 'nix'
-    bucket: Record<string, Node>
+    buckets: Record<string, Node>
     composables: Composable[]
     data: I
   }
@@ -18,8 +18,6 @@ export namespace Nereid {
     name: string
     hash: string
     size: number
-    owner: string
-    group: string
     perm: number
   }
 
