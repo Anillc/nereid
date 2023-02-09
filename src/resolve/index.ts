@@ -1,7 +1,7 @@
 import EventEmitter from 'events'
 import { promises as fs } from 'fs'
 import { Nereid } from '..'
-import { closure, select } from '../utils'
+import { closure, exists, select } from '../utils'
 import { createHttpSource } from './http'
 import { download } from './download'
 import { link } from './link'
@@ -17,6 +17,7 @@ declare module '..' {
 export interface Source<I = unknown> {
   src: string
   weight?: number
+  index?: Nereid.Index<I>
   fetchIndex(index: string): Promise<Nereid.Index<I>>
   task(composable: Nereid.Composable): Task
 }
@@ -125,15 +126,13 @@ async function startSync(state: State, srcs: string[], bucket: string, options: 
     })
   }
 
-  try {
-    await fs.access(options.output, fs.constants.F_OK | fs.constants.W_OK)
-  } catch (e) {
-    try {
-      await fs.mkdir(`${options.output}/store`, { recursive: true })
-      await fs.access(options.output, fs.constants.F_OK | fs.constants.W_OK)
-    } catch (e) {
+  const store = `${options.output}/store`
+  if (!exists(store)) {
+    await fs.mkdir(store, { recursive: true })
+    if (!exists(store)) {
       state.status = 'failed'
-      state.emit('error', e)
+      state.emit('error', new Error(`failed to access ${store}`))
+      return
     }
   }
 
@@ -149,6 +148,7 @@ async function startSync(state: State, srcs: string[], bucket: string, options: 
       const index = await source.fetchIndex(options.index)
       const composables = closure(index, bucket, options.hash)
       if (!composables) return null
+      source.index = index
       return [index, composables, source] as const
     } catch (error) {
       return null

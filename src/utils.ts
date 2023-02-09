@@ -1,4 +1,4 @@
-import { createReadStream } from 'fs'
+import { createReadStream, promises as fsp } from 'fs'
 import { createHash } from 'crypto'
 import { basename } from 'path'
 import { Nereid } from '.'
@@ -69,7 +69,7 @@ export function zip<T, U>(ts: T[], us: U[]): [T, U][] {
 }
 
 const base32Chars = '0123456789abcdfghijklmnpqrsvwxyz'
-export async function hash(file: string) {
+export async function nixHash(file: string) {
   const stream = createReadStream(file)
   const sha256 = createHash('sha256')
   stream.pipe(sha256)
@@ -92,4 +92,19 @@ export async function hash(file: string) {
     result += base32Chars[c & 0x1f]
   }
   return result
+}
+
+export async function validate(path: string, hash: string, mode: string) {
+  if (mode !== 'nix') throw new Error('unsupported hash mode')
+  const result = await nixHash(path)
+  return result === hash
+}
+
+export async function exists(path: string) {
+  try {
+    await fsp.access(path, fsp.constants.F_OK | fsp.constants.W_OK)
+    return true
+  } catch (e) {
+    return false
+  }
 }

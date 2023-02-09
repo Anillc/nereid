@@ -1,6 +1,7 @@
+import { promises as fsp } from 'fs'
 import { State, Source, ResolveOptions, Task } from '.'
 import { Nereid } from '..'
-import { sample } from '../utils'
+import { exists, sample, validate } from '../utils'
 
 export async function* download<I>(
   state: State,
@@ -16,11 +17,24 @@ export async function* download<I>(
   state.emit('download/start')
   composables.forEach(composable => composable.retry = options.retry)
   const tasks: Task[] = []
-  const done: Task[] = []
+  const done: Nereid.Composable[] = []
   while (composables.length !== 0 && tasks.length !== 0) {
     while (tasks.length < options.maxTaskCount && composables.length !== 0) {
       const source = sample(sources)
-      tasks.push(source.task(composables.shift()))
+      const composable = composables.shift()
+      const path = `${options.output}/store/${composable.hash}`
+      if (await exists(path) && validate(path, composable.hash, source.index.hashMode)) {
+        done.push(composable)
+        continue
+      } else {
+        try {
+          await fsp.rm(path, { force: true })
+        } catch (e) {
+          state.status = 'failed'
+          state.emit('failed', e)
+        }
+        tasks.push(source.task(composable))
+      }
     }
 
     if (state.status as any === 'pause') {
@@ -59,15 +73,14 @@ export async function* download<I>(
         break
       case 'done':
         tasks.splice(i, 1)
-        done.push(task)
+        done.push(task.composable)
         task.source.weight += 1
         state.emit('download/composable/done', task.composable, task.source)
         break
-      case 'pause':
-        // unreachable
-        break
-      default:
-        throw new Error('Unknown error.')
+      // case 'pause':
+      // case 'downloading':
+      // default:
+      //   // unreachable
     }
   }
   state.status = 'done'
