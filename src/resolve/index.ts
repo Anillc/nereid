@@ -25,13 +25,14 @@ export interface Source<I = unknown> {
 export interface Task {
   status: 'downloading' | 'pause' | 'failed' | 'done'
   source: Source
-  composable: Nereid.Composable,
+  composable: Nereid.Composable
   downloaded: number
-  stop(): void
-  pause(): void
+  error?: Error
   // this promise should always resolved
   // this function will start download
   promise(): Promise<Task>
+  pause(): void
+  stop(): void
 }
 
 // pause and cancel are only valid for downloading status
