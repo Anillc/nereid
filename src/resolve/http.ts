@@ -9,6 +9,7 @@ export class HttpTask implements Task {
     public url: string,
     public composable: Nereid.Composable,
     public timeout: number,
+    public output: string,
   ) { }
 
   get downloaded() {
@@ -29,14 +30,14 @@ export class HttpTask implements Task {
   }
 }
 
-export function createHttpSource(src: string, timeout: number): Source {
-  const source = { src, fetchIndex, task }
+export function createHttpSource(src: string, timeout: number, output: string): Source {
+  const source: Source = { src, fetchIndex, task }
   async function fetchIndex(index: string) {
-    const { data }: AxiosResponse<Nereid.Index> = await axios.get(`${src}${index}`)
+    const { data }: AxiosResponse<Nereid.Index<null>> = await axios.get(`${src}${index}`)
     return data
   }
   function task(composable: Nereid.Composable) {
-    return new HttpTask(source, src, composable, timeout)
+    return new HttpTask(source, src, composable, timeout, output)
   }
   return source
 }

@@ -27,9 +27,11 @@ export async function visitAsync(
   }
 }
 
-export function closure(index: Nereid.Index, bucket: string) {
+export function closure(index: Nereid.Index<unknown>, bucket: string, hash?: string) {
   const node = index?.bucket?.[bucket]
   if (!node) return
+  // a not and a logical implication (<=)
+  if (!!hash > (node.hash === hash)) return
   const composables = new Set<string>()
   visit(node, node => {
     if (node.type === 'file') {
