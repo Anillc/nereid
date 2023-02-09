@@ -26,18 +26,21 @@ export interface Task {
   source: Source
   composable: Nereid.Composable,
   downloaded: number
-  start(start?: number): void
   stop(): void
   pause(): void
+  // pause should reject the promise
+  // clean up all callbacks in download function
+  // this function will start download
   promise(): Promise<Task>
 }
 
+// pause and cancel are only valid for downloading status
 export interface State extends EventEmitter {
-  status: 'checking' | 'downloading' | 'linking' | 'done' | 'failed'
+  status: 'checking' | 'downloading' | 'pause' | 'linking' | 'done' | 'failed' | 'canceled'
   progress: number
-  pause(): void
+  pause(): Promise<void>
   resume(): void
-  cancel(): void
+  cancel(): Promise<void>
 }
 
 export interface ResolveOptions {
@@ -83,7 +86,57 @@ function createSource(src: string, options: ResolveOptions) {
 async function startSync(state: State, srcs: string[], bucket: string, options: ResolveOptions) {
   state.status = 'checking'
   state.progress = 0
-  // TODO: functions
+
+  state.pause = async () => {
+    return new Promise(resolve => {
+      switch (state.status) {
+        case 'checking':
+          state.once('download/start', () => state.pause())
+          return
+        case 'downloading':
+          // will check the status in download function
+          state.status = 'pause'
+          resolve()
+          return
+        default:
+          resolve()
+      }
+    })
+  }
+  state.resume = () => {
+    if (state.status !== 'pause') return
+    state.status = 'downloading'
+    downloader.next()
+  }
+  state.cancel = () => {
+    return new Promise(resolve => {
+      switch (state.status) {
+        case 'checking':
+          state.once('download/start', () => state.cancel())
+          return
+        case 'downloading':
+          // will check the status in download function, too
+          state.status = 'canceled'
+          state.emit('internal/download/cancel')
+          resolve()
+          return
+        default:
+          resolve()
+      }
+    })
+  }
+
+  try {
+    await fs.access(options.output, fs.constants.F_OK | fs.constants.W_OK)
+  } catch (e) {
+    try {
+      await fs.mkdir(`${options.output}/store`, { recursive: true })
+      await fs.access(options.output, fs.constants.F_OK | fs.constants.W_OK)
+    } catch (e) {
+      state.status = 'failed'
+      state.emit('error', e)
+    }
+  }
 
   const sources = srcs
     .map(src => createSource(src, options))
@@ -103,13 +156,6 @@ async function startSync(state: State, srcs: string[], bucket: string, options: 
     }
   })
 
-  try {
-    await fs.access(options.output, fs.constants.F_OK | fs.constants.W_OK)
-  } catch (e) {
-    await fs.mkdir(`${options.output}/store`, { recursive: true })
-    await fs.access(options.output, fs.constants.F_OK | fs.constants.W_OK)
-  }
-
   const checker = select(checks)
   let checkResult: IteratorResult<CheckResult>
   while (!(checkResult = await checker.next()).done) {
@@ -126,6 +172,9 @@ async function startSync(state: State, srcs: string[], bucket: string, options: 
   const checked = (await Promise.all(checks)).filter(source => source)
   const avaliable = checked.map(source => source[2])
   const composables = checked[0][1]
-  await download(state, avaliable, composables, options)
-  await link()
+  const downloader = download(state, avaliable, composables, options)
+  downloader.next()
+  state.on('download/done', () => {
+    link()
+  })
 }

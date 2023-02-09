@@ -2,12 +2,16 @@ import { State, Source, ResolveOptions, Task } from '.'
 import { Nereid } from '..'
 import { sample } from '../utils'
 
-export async function download<I>(
+export async function* download<I>(
   state: State,
   sources: Source<I>[],
   composables: Nereid.Composable[],
   options: ResolveOptions
 ) {
+  state.on('internal/download/cancel', () => {
+    if (tasks) tasks.forEach(task => task.stop())
+  })
+
   state.status = 'downloading'
   state.emit('download/start')
   composables.forEach(composable => composable.retry = options.retry)
@@ -19,10 +23,25 @@ export async function download<I>(
       tasks.push(source.task(composables.shift()))
     }
 
-    const [task, i] = await Promise.race(tasks.map(async (task, i) => {
+    if (state.status as any === 'pause') {
+      tasks.forEach(task => task.pause())
+      yield
+    }
+    if (state.status as any === 'canceled') return
+
+    const resolves: Function[] = []
+    const [task, i] = await Promise.any(tasks.map((task, i) => {
       state.emit('download/composable/start', task.composable, task.source)
-      return [await task.promise(), i] as const
+      return new Promise<[Task, number]>((resolve, reject) => {
+        resolves.push(resolve)
+        task.promise()
+          .then(task => { resolve([task, i]) })
+          .catch(reject)
+      })
     }))
+    // resolve all promises to avoid memory leak
+    resolves.forEach(resolve => resolve())
+
     switch (task.status) {
       case 'failed':
         tasks.splice(i, 1)

@@ -16,9 +16,6 @@ export class HttpTask implements Task {
     return 0
   }
 
-  start(start = 0) {
-  }
-
   stop() {
   }
 
