@@ -1,6 +1,5 @@
 import { createReadStream, promises as fsp } from 'fs'
 import { createHash } from 'crypto'
-import { basename } from 'path'
 import { Nereid } from '.'
 
 export function visit(
@@ -68,7 +67,6 @@ export function zip<T, U>(ts: T[], us: U[]): [T, U][] {
   return result
 }
 
-const base32Chars = '0123456789abcdfghijklmnpqrsvwxyz'
 export async function nixHashFile(file: string) {
   const stream = createReadStream(file)
   const sha256 = createHash('sha256')
@@ -83,6 +81,7 @@ export async function nixHashText(text: string) {
   return nixHash(sha256.digest('hex'))
 }
 
+const base32Chars = '0123456789abcdfghijklmnpqrsvwxyz'
 function nixHash(sha256: string) {
   const description = `source:sha256:${sha256}:/nereid/store`
   const hash = createHash('sha256').update(description).digest()

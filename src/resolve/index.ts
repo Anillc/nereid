@@ -2,9 +2,13 @@ import EventEmitter from 'events'
 import { promises as fs } from 'fs'
 import { Nereid } from '..'
 import { closure, exists, select } from '../utils'
-import { createHttpSource } from './http'
+import { createHttpSource } from './sources/http'
 import { download } from './download'
 import { link } from './link'
+import { Task } from './task'
+import { createFileSource } from './sources'
+
+export * from './task'
 
 declare module '..' {
   namespace Nereid {
@@ -19,20 +23,7 @@ export interface Source<I = unknown> {
   weight?: number
   index?: Nereid.Index<I>
   fetchIndex(index: string): Promise<Nereid.Index<I>>
-  task(composable: Nereid.Composable): Task
-}
-
-export interface Task {
-  status: 'downloading' | 'pause' | 'failed' | 'done'
-  source: Source
-  composable: Nereid.Composable
-  downloaded: number
-  error?: Error
-  // this promise should always resolved
-  // this function will start download
-  promise(): Promise<Task>
-  pause(): void
-  stop(): void
+  task(composable: Nereid.Composable): Task<I>
 }
 
 // pause and cancel are only valid for downloading status
@@ -76,6 +67,9 @@ function createSource(src: string, options: ResolveOptions) {
   switch (match[1]) {
     case 'http':
       source = createHttpSource(src, options.timeout, options.output)
+      break
+    case 'file':
+      source = createFileSource(src, options.output)
       break
     default:
       return
@@ -172,6 +166,7 @@ async function startSync(state: State, srcs: string[], bucket: string, options: 
   downloader.next()
   state.on('download/done', async () => {
     await link(state, checked[0][0], bucket, options)
+    if (state.status === 'failed') return
     state.status = 'done'
     state.emit('done')
   })

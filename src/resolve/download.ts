@@ -32,6 +32,7 @@ export async function *download<I>(
         } catch (e) {
           state.status = 'failed'
           state.emit('failed', e)
+          return
         }
         tasks.push(source.task(composable))
       }
@@ -55,32 +56,46 @@ export async function *download<I>(
       resolves.forEach(resolve => resolve())
     })
 
+    let retry = false
     switch (task.status) {
       case 'failed':
         tasks.splice(i, 1)
         task.source.weight -= 1
-        if (task.composable.retry <= 0) {
-          state.status = 'failed'
-          const error = new Error(`Failed to download ${task.composable.hash}`)
-          state.emit('download/failed', error)
-          state.emit('failed', error)
-          return
-        } else {
-          task.composable.retry--
-          composables.push(task.composable)
-          state.emit('download/composable/retry', task.composable, task.source)
-        }
+        retry = true
         break
       case 'done':
         tasks.splice(i, 1)
-        done.push(task.composable)
-        task.source.weight += 1
-        state.emit('download/composable/done', task.composable, task.source)
+        const path = `${options.output}/store/${task.composable.hash}`
+        if (validate(path, task.composable.hash, task.source.index.hashMode)) {
+          done.push(task.composable)
+          task.source.weight += 1
+          state.emit('download/composable/done', task.composable, task.source)
+        } else {
+          try {
+            await fsp.rm(path, { force: true })
+          } catch (e) {
+            state.status = 'failed'
+            state.emit('failed', e)
+            return
+          }
+          retry = true
+        }
         break
       // case 'pause':
       // case 'downloading':
       // default:
       //   // unreachable
+    }
+    if (task.composable.retry <= 0) {
+      state.status = 'failed'
+      const error = new Error(`Failed to download ${task.composable.hash}`)
+      state.emit('download/failed', error)
+      state.emit('failed', error)
+      return
+    } else {
+      task.composable.retry--
+      composables.push(task.composable)
+      state.emit('download/composable/retry', task.composable, task.source)
     }
   }
   state.status = 'done'
