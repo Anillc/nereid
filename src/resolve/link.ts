@@ -36,6 +36,9 @@ async function buildBucket(
   } else {
     await writeFile(path, node.composables, options, node.hash, hashMode)
   }
+  if (node.perm) {
+    await fsp.chmod(path, node.perm)
+  }
 }
 
 async function writeFile(
@@ -53,6 +56,7 @@ async function writeFile(
   }
   await new Promise(resolve => writer.end(resolve))
   if (options.checkFileHash) {
-    validate(path, hash, hashMode)
+    const result = validate(path, hash, hashMode)
+    if (!result) throw new Error(`hash mismatched: ${path}`)
   }
 }

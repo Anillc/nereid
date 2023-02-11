@@ -45,7 +45,7 @@ export interface ResolveOptions {
   retry?: number
 }
 
-export function sync(srcs: string[], bucket: string, options: ResolveOptions) {
+export function sync(srcs: string[], bucket: string, options?: ResolveOptions) {
   options = {
     timeout: 30000,
     checkFileHash: false,
