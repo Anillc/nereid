@@ -1,12 +1,11 @@
 import EventEmitter from 'events'
 import { promises as fs } from 'fs'
 import { Nereid } from '..'
-import { closure, exists, select } from '../utils'
-import { createHttpSource } from './sources/http'
+import { closure, exists } from '../utils'
 import { download } from './download'
 import { link } from './link'
 import { Task } from './task'
-import { createFileSource } from './sources'
+import { createFileSource, createHttpSource } from './sources'
 
 export * from './task'
 

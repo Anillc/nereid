@@ -2,28 +2,32 @@ import { createReadStream, promises as fsp } from 'fs'
 import { createHash } from 'crypto'
 import { Nereid } from '.'
 
-export function visit(
-  node: Nereid.Node,
-  callback: (node: Nereid.Node) => void,
-  thiz?: unknown
+export function visit<T>(
+  node: Nereid.Node & T,
+  callback: (node: Nereid.Node & T) => void,
+  after = false,
+  thiz?: unknown,
 ) {
-  callback.apply(thiz, callback)
+  if (!after) callback.apply(thiz, callback)
   if (node.type === 'folder') {
-    node.files.forEach(file => visit(file, callback, thiz))
+    node.files.forEach(file => visit(file, callback, after, thiz))
   }
+  if (after) callback.apply(thiz, callback)
 }
 
-export async function visitAsync(
-  node: Nereid.Node,
-  callback: (node: Nereid.Node) => Promise<void>,
-  thiz?: unknown
+export async function visitAsync<T>(
+  node: Nereid.Node & T,
+  callback: (node: Nereid.Node & T) => Promise<void>,
+  after = false,
+  thiz?: unknown,
 ) {
-  await callback.apply(thiz, callback)
+  if (!after) await callback.apply(thiz, callback)
   if (node.type === 'folder') {
     for (const file of node.files) {
-      await visitAsync(file, callback, thiz)
+      await visitAsync(file, callback, after, thiz)
     }
   }
+  if (after) await callback.apply(thiz, callback)
 }
 
 export function closure(index: Nereid.Index<unknown>, bucket: string, hash?: string) {
@@ -67,7 +71,8 @@ export function zip<T, U>(ts: T[], us: U[]): [T, U][] {
   return result
 }
 
-export async function nixHashFile(file: string) {
+export async function hashFile(file: string, mode: string) {
+  if (mode !== 'nix') throw new Error('Unsupported hash mode')
   const stream = createReadStream(file)
   const sha256 = createHash('sha256')
   stream.pipe(sha256)
@@ -75,7 +80,8 @@ export async function nixHashFile(file: string) {
   return nixHash(sha256.digest('hex'))
 }
 
-export async function nixHashText(text: string) {
+export function hashText(text: string | Buffer, mode: string) {
+  if (mode !== 'nix') throw new Error('Unsupported hash mode')
   const sha256 = createHash('sha256')
   sha256.update(text)
   return nixHash(sha256.digest('hex'))
@@ -104,8 +110,7 @@ function nixHash(sha256: string) {
 }
 
 export async function validate(path: string, hash: string, mode: string) {
-  if (mode !== 'nix') throw new Error('unsupported hash mode')
-  const result = await nixHashFile(path)
+  const result = await hashFile(path, mode)
   return result === hash
 }
 

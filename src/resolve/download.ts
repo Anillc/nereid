@@ -16,7 +16,7 @@ export async function *download<I>(
   state.status = 'downloading'
   state.emit('download/start')
   composables.forEach(composable => composable.retry = options.retry)
-  const tasks: Task[] = []
+  const tasks: Task<unknown>[] = []
   const done: Nereid.Composable[] = []
   while (composables.length !== 0 && tasks.length !== 0) {
     while (tasks.length < options.maxTaskCount && composables.length !== 0) {
@@ -47,7 +47,7 @@ export async function *download<I>(
     const resolves: Function[] = []
     const [task, i] = await Promise.race(tasks.map((task, i) => {
       state.emit('download/composable/start', task.composable, task.source)
-      return new Promise<[Task, number]>(resolve => {
+      return new Promise<[Task<unknown>, number]>(resolve => {
         resolves.push(resolve)
         task.promise().then(task => { resolve([task, i]) })
       })
