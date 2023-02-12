@@ -7,12 +7,10 @@ import { link } from './link'
 import { Task } from './task'
 import { createFileSource, createHttpSource } from './sources'
 
-export * from './task'
-
 declare module '..' {
   namespace Nereid {
     interface Composable {
-      retry: number
+      retry?: number
     }
   }
 }
@@ -49,7 +47,7 @@ export function sync(srcs: string[], bucket: string, options?: ResolveOptions) {
     timeout: 30000,
     checkFileHash: false,
     index: '/nereid.json',
-    output: process.cwd() + '/nered',
+    output: process.cwd() + '/nereid',
     maxTaskCount: 10,
     retry: 3,
     ...options,
@@ -60,7 +58,7 @@ export function sync(srcs: string[], bucket: string, options?: ResolveOptions) {
 }
 
 function createSource(src: string, options: ResolveOptions) {
-  const match = /^(\w+):\/\//
+  const match = /^(\w+):\/\//.exec(src)
   if (!match) return
   let source: Source
   switch (match[1]) {
@@ -100,7 +98,7 @@ async function startSync(state: State, srcs: string[], bucket: string, options: 
   state.resume = () => {
     if (state.status !== 'pause') return
     state.status = 'downloading'
-    downloader.next()
+    next()
   }
   state.cancel = () => {
     return new Promise(resolve => {
@@ -121,7 +119,7 @@ async function startSync(state: State, srcs: string[], bucket: string, options: 
   }
 
   const store = `${options.output}/store`
-  if (!exists(store)) {
+  if (!await exists(store)) {
     await fs.mkdir(store, { recursive: true })
     if (!exists(store)) {
       state.status = 'failed'
@@ -162,7 +160,14 @@ async function startSync(state: State, srcs: string[], bucket: string, options: 
 
   const composables = checked[0][1]
   const downloader = download(state, avaliable, composables, options)
-  downloader.next()
+  function next() {
+    downloader.next().catch(error => {
+      state.status = 'failed'
+      state.emit('check/failed', error)
+      state.emit('failed', error)
+    })
+  }
+  next()
   state.on('download/done', async () => {
     await link(state, checked[0][0], bucket, options)
     if (state.status === 'failed') return

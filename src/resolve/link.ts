@@ -1,7 +1,7 @@
 import { createReadStream, createWriteStream, promises as fsp } from 'fs'
 import { ResolveOptions, State } from '.'
 import { Nereid } from '..'
-import { validate } from '../utils'
+import { exists, validate } from '../utils'
 
 export async function link(
   state: State,
@@ -21,6 +21,7 @@ export async function link(
   state.emit('link/done')
 }
 
+// TODO: write to tmp and move
 async function buildBucket(
   node: Nereid.Node,
   prefix: string,
@@ -28,6 +29,7 @@ async function buildBucket(
   hashMode: string
 ) {
   const path = `${prefix}/${node.name}`
+  if (await exists(path)) return
   if (node.type === 'folder') {
     await fsp.mkdir(path)
     for (const child of node.files) {
@@ -51,12 +53,12 @@ async function writeFile(
   const writer = createWriteStream(path)
   for (const composable of composables) {
     const reader = createReadStream(`${options.output}/store/${composable}`)
-    reader.pipe(writer)
+    reader.pipe(writer, { end: false })
     await new Promise(resolve => reader.on('end', resolve))
   }
   await new Promise(resolve => writer.end(resolve))
   if (options.checkFileHash) {
-    const result = validate(path, hash, hashMode)
+    const result = await validate(path, hash, hashMode)
     if (!result) throw new Error(`hash mismatched: ${path}`)
   }
 }

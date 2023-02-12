@@ -1,7 +1,8 @@
 import { promises as fsp } from 'fs'
-import { State, Source, ResolveOptions, Task } from '.'
-import { Nereid } from '..'
+import { Task } from './task'
 import { exists, sample, validate } from '../utils'
+import { State, Source, ResolveOptions } from '.'
+import { Nereid } from '..'
 
 export async function *download<I>(
   state: State,
@@ -18,12 +19,12 @@ export async function *download<I>(
   composables.forEach(composable => composable.retry = options.retry)
   const tasks: Task<unknown>[] = []
   const done: Nereid.Composable[] = []
-  while (composables.length !== 0 && tasks.length !== 0) {
+  while (true) {
     while (tasks.length < options.maxTaskCount && composables.length !== 0) {
       const source = sample(sources)
       const composable = composables.shift()
       const path = `${options.output}/store/${composable.hash}`
-      if (await exists(path) && validate(path, composable.hash, source.index.hashMode)) {
+      if (await exists(path) && await validate(path, composable.hash, source.index.hashMode)) {
         done.push(composable)
         continue
       } else {
@@ -38,6 +39,10 @@ export async function *download<I>(
       }
     }
 
+    if (composables.length + tasks.length === 0) {
+      break
+    }
+
     if (state.status as any === 'pause') {
       tasks.forEach(task => task.pause())
       yield
@@ -49,7 +54,7 @@ export async function *download<I>(
       state.emit('download/composable/start', task.composable, task.source)
       return new Promise<[Task<unknown>, number]>(resolve => {
         resolves.push(resolve)
-        task.promise().then(task => { resolve([task, i]) })
+        task.promise().then(() => { resolve([task, i]) })
       })
     })).finally(() => {
       // resolve all promises to avoid memory leak
@@ -66,7 +71,7 @@ export async function *download<I>(
       case 'done':
         tasks.splice(i, 1)
         const path = `${options.output}/store/${task.composable.hash}`
-        if (validate(path, task.composable.hash, task.source.index.hashMode)) {
+        if (await validate(path, task.composable.hash, task.source.index.hashMode)) {
           done.push(task.composable)
           task.source.weight += 1
           state.emit('download/composable/done', task.composable, task.source)
@@ -86,16 +91,18 @@ export async function *download<I>(
       // default:
       //   // unreachable
     }
-    if (task.composable.retry <= 0) {
-      state.status = 'failed'
-      const error = new Error(`Failed to download ${task.composable.hash}`)
-      state.emit('download/failed', error)
-      state.emit('failed', error)
-      return
-    } else {
-      task.composable.retry--
-      composables.push(task.composable)
-      state.emit('download/composable/retry', task.composable, task.source)
+    if (retry) {
+      if (task.composable.retry <= 0) {
+        state.status = 'failed'
+        const error = new Error(`Failed to download ${task.composable.hash}`)
+        state.emit('download/failed', error)
+        state.emit('failed', error)
+        return
+      } else {
+        task.composable.retry--
+        composables.push(task.composable)
+        state.emit('download/composable/retry', task.composable, task.source)
+      }
     }
   }
   state.status = 'done'

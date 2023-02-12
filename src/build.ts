@@ -1,25 +1,38 @@
 import { promises as fsp, Stats } from 'fs'
 import { basename, resolve } from 'path'
 import { Nereid } from '.'
-import { hashFile, hashText, visitAsync } from './utils'
+import { exists, hashFile, hashText, visitAsync } from './utils'
 
 export interface BuildOptions {
   hashMode: 'nix'
   chunkSize: number
   parallel: number
+  index: string
 }
 
-export async function build(src: string, dst: string, bucket: string, options?: BuildOptions) {
+// TODO: multiple buckets
+//       merge indexes
+export async function build(src: string, dst: string, options?: BuildOptions) {
   options = {
     hashMode: 'nix',
     // 10MiB
     chunkSize: 10 * 1024 * 1024,
+    index: '/nereid.json',
     ...options,
   }
   const output = `${dst}/composables`
   await fsp.mkdir(output, { recursive: true })
   const map = new Map<string, Nereid.Composable>()
   const root = await buildTree(src, output, map, options)
+  const index: Nereid.Index = {
+    version: 1,
+    hashMode: 'nix',
+    buckets: {
+      [basename(src)]: root
+    },
+    composables: [...map.values()],
+  }
+  await fsp.writeFile(`${dst}${options.index}`, JSON.stringify(index), 'utf-8')
 }
 
 async function buildTree(
@@ -86,8 +99,9 @@ async function buildComposables(
       read += bytesRead
     }
     const hash = hashText(buffer, options.hashMode)
-    map[hash] = { hash, size: chunkSize }
+    map.set(hash, { hash, size: chunkSize })
     results.add(hash)
+    if (await exists(`${output}/${hash}`)) continue
     await fsp.writeFile(`${output}/${hash}`, buffer)
   }
 
@@ -103,7 +117,7 @@ async function buildComposables(
     read += bytesRead
   }
   const hash = hashText(buffer, options.hashMode)
-  map[hash] = { hash, size: chunkSize }
+  map.set(hash, { hash, size: rest })
   results.add(hash)
   await fsp.writeFile(`${output}/${hash}`, buffer)
 

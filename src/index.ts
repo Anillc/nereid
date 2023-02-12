@@ -1,10 +1,10 @@
 export namespace Nereid {
-  export interface Index<I> {
+  export interface Index<I = unknown> {
     version: 1
     hashMode: 'nix'
     buckets: Record<string, Node>
     composables: Composable[]
-    data: I
+    data?: I
   }
 
   export interface Composable {

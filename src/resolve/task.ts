@@ -5,7 +5,7 @@ export abstract class Task<T> {
   status: 'downloading' | 'pause' | 'failed' | 'done'
   error?: Error
   resolve: Function
-  private future: Promise<Task<T>>
+  private future: Promise<void>
   protected current = 0
   public constructor(
     public source: Source<T>,
@@ -20,11 +20,10 @@ export abstract class Task<T> {
   async promise() {
     if (!this.future) {
       this.status = 'downloading'
-      this.future = new Promise(resolve => this.resolve = resolve)
-        .then(() => this.resolve = undefined)
+      this.future = new Promise(resolve => this.resolve = resolve).then(() => this.resolve = undefined)
       this._start()
     }
-    return this.promise()
+    return this.future
   }
   async pause() {
     this.status = 'pause'

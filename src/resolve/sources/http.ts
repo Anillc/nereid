@@ -1,6 +1,7 @@
 import { createWriteStream, promises as fsp, ReadStream, WriteStream } from 'fs'
 import axios, { AxiosResponse } from 'axios'
-import { Source, Task } from '..'
+import { Task } from '../task'
+import { Source } from '..'
 import { Nereid } from '../..'
 
 export class HttpTask extends Task<null> {
@@ -33,6 +34,7 @@ export class HttpTask extends Task<null> {
           await new Promise(resolve => this.stream.close(resolve))
         await fsp.rm(this.output, { force: true })
         this.stream = createWriteStream(this.output)
+        this.current = 0
       }
       if (!this.stream) this.stream = createWriteStream(this.output)
       response.data.on('data', data => {
@@ -68,7 +70,7 @@ export function createHttpSource(src: string, timeout: number, output: string): 
   }
   function task(composable: Nereid.Composable) {
     return new HttpTask(
-      source, composable, `${output}/${composable.hash}`,
+      source, composable, `${output}/store/${composable.hash}`,
       `${src}/composables/${composable.hash}`, timeout, 
     )
   }

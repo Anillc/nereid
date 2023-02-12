@@ -1,5 +1,6 @@
-import { createReadStream, promises as fsp, ReadStream, WriteStream } from 'fs'
-import { Source, Task } from '..'
+import { createReadStream, createWriteStream, promises as fsp, ReadStream, WriteStream } from 'fs'
+import { Task } from '../task'
+import { Source } from '..'
 import { Nereid } from '../..'
 
 export class FileTask extends Task<null> {
@@ -17,19 +18,28 @@ export class FileTask extends Task<null> {
 
   _start() {
     new Promise(async () => {
+      this.current = 0
       if (this.read)
         await new Promise(resolve => this.read.close(resolve))
       if (this.write)
         await new Promise(resolve => this.write.close(resolve))
       await fsp.rm(this.output, { force: true })
 
-      this.read = createReadStream(this.path, { start: this.current })
+      this.read = createReadStream(this.path)
+      this.write = createWriteStream(this.output)
       this.read.on('data', data => {
         if (typeof data === 'string') data = Buffer.from(data)
         this.write.write(data)
         this.current += data.byteLength
       })
       this.read.on('error', error => {
+        this.failed(error)
+      })
+      this.read.on('end', () => {
+        this.write.close()
+        this.done()
+      })
+      this.write.on('error', error => {
         this.failed(error)
       })
     }).catch(error => {
@@ -61,7 +71,7 @@ export function createFileSource(src: string, output: string): Source {
   }
   function task(composable: Nereid.Composable) {
     return new FileTask(
-      source, composable, `${output}/${composable.hash}`, 
+      source, composable, `${output}/store/${composable.hash}`, 
       `${base}/composables/${composable.hash}`,
     )
   }

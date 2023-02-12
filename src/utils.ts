@@ -8,11 +8,11 @@ export function visit<T>(
   after = false,
   thiz?: unknown,
 ) {
-  if (!after) callback.apply(thiz, callback)
+  if (!after) callback.apply(thiz, [node])
   if (node.type === 'folder') {
     node.files.forEach(file => visit(file, callback, after, thiz))
   }
-  if (after) callback.apply(thiz, callback)
+  if (after) callback.apply(thiz, [node])
 }
 
 export async function visitAsync<T>(
@@ -21,13 +21,13 @@ export async function visitAsync<T>(
   after = false,
   thiz?: unknown,
 ) {
-  if (!after) await callback.apply(thiz, callback)
+  if (!after) await callback.apply(thiz, [node])
   if (node.type === 'folder') {
     for (const file of node.files) {
       await visitAsync(file, callback, after, thiz)
     }
   }
-  if (after) await callback.apply(thiz, callback)
+  if (after) await callback.apply(thiz, [node])
 }
 
 export function closure(index: Nereid.Index<unknown>, bucket: string, hash?: string) {
