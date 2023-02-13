@@ -21,6 +21,7 @@ export namespace Nereid {
     perm: number
   }
 
+  // TODO: symlink
   export interface File extends NodeCommon {
     type: 'file'
     composables: string[]
@@ -31,3 +32,6 @@ export namespace Nereid {
     files: Node[]
   }
 }
+
+export * from './resolve'
+export * from './build'

@@ -43,6 +43,7 @@ export class HttpTask extends Task<null> {
         this.current += data.byteLength
       })
       response.data.on('end', () => {
+        this.stream.end()
         this.done()
       })
       response.data.on('error', error => {

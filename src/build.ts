@@ -84,42 +84,46 @@ async function buildComposables(
   const results = new Set<string>
   const count = Math.floor(stat.size / chunkSize)
   const rest = stat.size % chunkSize
-  const fd = await fsp.open(path, 'r')
+  let fd: fsp.FileHandle
+  try {
+    fd = await fsp.open(path, 'r')
+    for (let i = 0; i < count; i++) {
+      const position = i * chunkSize
+      const buffer = Buffer.allocUnsafe(chunkSize)
+      let read = 0
+      while (read < chunkSize) {
+        const { bytesRead } = await fd.read({
+          buffer, position,
+          offset: read,
+          length: chunkSize - read,
+        })
+        read += bytesRead
+      }
+      const hash = hashText(buffer, options.hashMode)
+      map.set(hash, { hash, size: chunkSize })
+      results.add(hash)
+      if (await exists(`${output}/${hash}`)) continue
+      await fsp.writeFile(`${output}/${hash}`, buffer)
+    }
 
-  for (let i = 0; i < count; i++) {
-    const position = i * chunkSize
-    const buffer = Buffer.allocUnsafe(chunkSize)
+    const buffer = Buffer.allocUnsafe(rest)
     let read = 0
-    while (read < chunkSize) {
+    while (read < rest) {
       const { bytesRead } = await fd.read({
-        buffer, position,
+        buffer,
         offset: read,
-        length: chunkSize - read,
+        length: rest - read,
+        position: count * chunkSize,
       })
       read += bytesRead
     }
     const hash = hashText(buffer, options.hashMode)
-    map.set(hash, { hash, size: chunkSize })
+    map.set(hash, { hash, size: rest })
     results.add(hash)
-    if (await exists(`${output}/${hash}`)) continue
     await fsp.writeFile(`${output}/${hash}`, buffer)
-  }
 
-  const buffer = Buffer.allocUnsafe(rest)
-  let read = 0
-  while (read < rest) {
-    const { bytesRead } = await fd.read({
-      buffer,
-      offset: read,
-      length: rest - read,
-      position: count * chunkSize,
-    })
-    read += bytesRead
+    return [...results]
+  } finally {
+    fd?.close()
   }
-  const hash = hashText(buffer, options.hashMode)
-  map.set(hash, { hash, size: rest })
-  results.add(hash)
-  await fsp.writeFile(`${output}/${hash}`, buffer)
-
-  return [...results]
 }

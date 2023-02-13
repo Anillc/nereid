@@ -1,10 +1,13 @@
 {
   "name": "nereid",
-  "version": "1.0.0",
-  "main": "index.js",
+  "version": "0.0.2",
+  "main": "lib/index.js",
   "repository": "https://github.com/Anillc/nereid.git",
   "author": "Anillc <void@anillc.cn>",
   "license": "MIT",
+  "files": [
+    "lib"
+  ],
   "devDependencies": {
     "@types/node": "^18.11.18",
     "ts-node": "^10.9.1",
