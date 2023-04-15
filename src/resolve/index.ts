@@ -44,7 +44,7 @@ export interface Source<I = unknown> {
 // pause and cancel are only valid for downloading status
 export interface State extends EventEmitter {
   status: 'checking' | 'downloading' | 'pause' | 'linking' | 'done' | 'failed' | 'canceled'
-  progress: number
+  progress(): number
   pause(): Promise<void>
   resume(): void
   cancel(): Promise<void>
@@ -95,7 +95,7 @@ function createSource(src: string, options: ResolveOptions) {
 
 async function startSync(state: State, srcs: string[], bucket: string, options: ResolveOptions) {
   state.status = 'checking'
-  state.progress = 0
+  state.progress = () => -1
 
   state.pause = async () => {
     return new Promise(resolve => {

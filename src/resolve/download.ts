@@ -10,6 +10,8 @@ export async function *download<I>(
   composables: Nereid.Composable[],
   options: ResolveOptions
 ) {
+  const total = composables.reduce((acc, x) => acc + x.size, 0)
+
   state.on('internal/download/cancel', () => {
     if (tasks) tasks.forEach(task => task.stop())
   })
@@ -19,6 +21,13 @@ export async function *download<I>(
   composables.forEach(composable => composable.retry = options.retry)
   const tasks: Task<unknown>[] = []
   const done: Nereid.Composable[] = []
+
+  state.progress = () => {
+    const downloading = tasks.reduce((acc, x) => acc + x.current, 0)
+    const downloaded = done.reduce((acc, x) => acc + x.size, 0)
+    return (downloading + downloaded) / total
+  }
+
   while (true) {
     while (tasks.length < options.maxTaskCount && composables.length !== 0) {
       const source = sample(sources)
@@ -88,6 +97,7 @@ export async function *download<I>(
         break
       // case 'pause':
       // case 'downloading':
+      //   // do nothing
       // default:
       //   // unreachable
     }
