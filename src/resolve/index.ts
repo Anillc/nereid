@@ -101,7 +101,10 @@ async function startSync(state: State, srcs: string[], bucket: string, options: 
     return new Promise(resolve => {
       switch (state.status) {
         case 'checking':
-          state.once('download/start', () => state.pause())
+          state.once('download/start', async () => {
+            state.pause()
+            resolve()
+          })
           return
         case 'downloading':
           // will check the status in download function
