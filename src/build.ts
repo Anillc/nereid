@@ -8,30 +8,38 @@ export interface BuildOptions {
   chunkSize?: number
   parallel?: number
   index?: string
+  bucket?: string
 }
 
-// TODO: multiple buckets
-//       merge indexes
 export async function build(src: string, dst: string, options?: BuildOptions) {
   options = {
     hashMode: 'nix',
     // 10MiB
     chunkSize: 10 * 1024 * 1024,
     index: '/nereid.json',
+    bucket: basename(src),
     ...options,
+  }
+  const path = `${dst}${options.index}`
+  let index: Nereid.Index
+  if (await exists(path)) {
+    index = JSON.parse(await fsp.readFile(path, 'utf-8'))
+  } else {
+     index = {
+      version: 1,
+      hashMode: 'nix',
+      buckets: {},
+      composables: [],
+    }
   }
   const output = `${dst}/composables`
   await fsp.mkdir(output, { recursive: true })
-  const map = new Map<string, Nereid.Composable>()
-  const root = await buildTree(src, output, map, options)
-  const index: Nereid.Index = {
-    version: 1,
-    hashMode: 'nix',
-    buckets: {
-      [basename(src)]: root
-    },
-    composables: [...map.values()],
-  }
+
+  const map = new Map(index.composables.map(composable => [composable.hash, composable]))
+  const tree = await buildTree(src, output, map, options)
+  index.buckets[options.bucket] = tree
+  index.composables = [...map.values()]
+
   await fsp.writeFile(`${dst}${options.index}`, JSON.stringify(index), 'utf-8')
 }
 
