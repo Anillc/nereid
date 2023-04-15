@@ -106,21 +106,23 @@ async function buildComposables(
       await fsp.writeFile(`${output}/${hash}`, buffer)
     }
 
-    const buffer = Buffer.allocUnsafe(rest)
-    let read = 0
-    while (read < rest) {
-      const { bytesRead } = await fd.read({
-        buffer,
-        offset: read,
-        length: rest - read,
-        position: count * chunkSize,
-      })
-      read += bytesRead
+    if (rest !== 0) {
+      const buffer = Buffer.allocUnsafe(rest)
+      let read = 0
+      while (read < rest) {
+        const { bytesRead } = await fd.read({
+          buffer,
+          offset: read,
+          length: rest - read,
+          position: count * chunkSize,
+        })
+        read += bytesRead
+      }
+      const hash = hashText(buffer, options.hashMode)
+      map.set(hash, { hash, size: rest })
+      results.add(hash)
+      await fsp.writeFile(`${output}/${hash}`, buffer)
     }
-    const hash = hashText(buffer, options.hashMode)
-    map.set(hash, { hash, size: rest })
-    results.add(hash)
-    await fsp.writeFile(`${output}/${hash}`, buffer)
 
     return [...results]
   } finally {

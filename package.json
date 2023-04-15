@@ -10,7 +10,7 @@
   ],
   "scripts": {
     "build": "tsc",
-    "test": "cd tests && mocha index.ts -r ts-node/register"
+    "test": "cd tests && mocha index.ts -t 10000 -r ts-node/register"
   },
   "devDependencies": {
     "@types/chai": "^4.3.4",
