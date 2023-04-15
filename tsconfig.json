@@ -8,6 +8,7 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "declaration": true,
+    "strictBindCallApply": true,
   },
   "include": [
     "src",

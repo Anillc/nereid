@@ -1,4 +1,4 @@
-import EventEmitter from 'events'
+import { EventEmitter } from '../events'
 import { promises as fs } from 'fs'
 import { Nereid } from '..'
 import { closure, exists } from '../utils'
@@ -12,6 +12,24 @@ declare module '..' {
     interface Composable {
       retry?: number
     }
+  }
+}
+
+declare module '../events' {
+  interface Events {
+    'download/start'(): void
+    'internal/download/cancel'(): void
+    'failed'(error: Error): void
+    'check/failed'(error: Error): void
+    'download/done'(): void
+    'download/failed'(error: Error): void
+    'download/composable/start'(composable: Nereid.Composable, source: Source): void
+    'download/composable/retry'(composable: Nereid.Composable, source: Source): void
+    'download/composable/done'(composable: Nereid.Composable, source: Source): void
+    'link/start'(): void
+    'link/failed'(error: Error): void
+    'link/done'(): void
+    'done'(): void
   }
 }
 
@@ -123,7 +141,7 @@ async function startSync(state: State, srcs: string[], bucket: string, options: 
     await fs.mkdir(store, { recursive: true })
     if (!exists(store)) {
       state.status = 'failed'
-      state.emit('error', new Error(`failed to access ${store}`))
+      state.emit('failed', new Error(`failed to access ${store}`))
       return
     }
   }
