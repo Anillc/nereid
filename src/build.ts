@@ -4,10 +4,10 @@ import { Nereid } from '.'
 import { exists, hashFile, hashText, visitAsync } from './utils'
 
 export interface BuildOptions {
-  hashMode: 'nix'
-  chunkSize: number
-  parallel: number
-  index: string
+  hashMode?: 'nix'
+  chunkSize?: number
+  parallel?: number
+  index?: string
 }
 
 // TODO: multiple buckets

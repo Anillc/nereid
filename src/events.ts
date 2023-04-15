@@ -5,7 +5,7 @@ type F<E, N extends keyof E> = E[N] extends (...args: any) => any ? E[N] : never
 
 type Once = boolean
 export class EventEmitter<E = Events> {
-  callbacks: { [N in keyof E]: [F<E, N>, Once][] }
+  callbacks: { [N in keyof E]?: [F<E, N>, Once][] } = {}
 
   on<N extends keyof E>(name: N, callback: F<E, N>, once = false) {
     const callbacks = this.callbacks[name] ||= []
@@ -26,6 +26,7 @@ export class EventEmitter<E = Events> {
 
   emit<N extends keyof E>(name: N, ...params: A<E, N>) {
     const callbacks = this.callbacks[name]
+    if (!callbacks) return
     const rest: typeof callbacks = []
     for (const [callback, once] of callbacks) {
       callback.apply(null, params)

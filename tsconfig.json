@@ -10,7 +10,5 @@
     "declaration": true,
     "strictBindCallApply": true,
   },
-  "include": [
-    "src",
-  ]
+  "include": ["src"],
 }
