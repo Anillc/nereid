@@ -12,7 +12,7 @@ export namespace Nereid {
     size: number
   }
 
-  export type Node = File | Folder
+  export type Node = File | Symlink | Folder
 
   export interface NodeCommon {
     name: string
@@ -21,10 +21,14 @@ export namespace Nereid {
     perm: number
   }
 
-  // TODO: symlink
   export interface File extends NodeCommon {
     type: 'file'
     composables: string[]
+  }
+
+  export interface Symlink extends NodeCommon {
+    type: 'symlink'
+    to: string
   }
 
   export interface Folder extends NodeCommon {

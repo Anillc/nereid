@@ -50,7 +50,7 @@ async function buildTree(
   options: BuildOptions
 ): Promise<Nereid.Node> {
   const name = basename(path)
-  const stat = await fsp.stat(path)
+  const stat = await fsp.lstat(path)
   if (stat.isFile()) {
     const hash = await hashFile(path, options.hashMode)
     const composables = await buildComposables(path, stat, output, map, options)
@@ -60,6 +60,15 @@ async function buildTree(
       perm: stat.mode,
       type: 'file',
       composables,
+    }
+  } else if (stat.isSymbolicLink()) {
+    const to = await fsp.readlink(path)
+    const hash = hashText(to, options.hashMode)
+    return {
+      name, hash, to,
+      size: stat.size,
+      perm: stat.mode,
+      type: 'symlink',
     }
   } else if (stat.isDirectory()) {
     const files = await fsp.readdir(path)

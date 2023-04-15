@@ -35,8 +35,12 @@ async function buildBucket(
     for (const child of node.files) {
       await buildBucket(child, path, options, hashMode)
     }
-  } else {
+  } else if (node.type === 'file') {
     await writeFile(path, node.composables, options, node.hash, hashMode)
+  } else if (node.type === 'symlink') {
+    await fsp.symlink(node.to, path)
+  } else {
+    throw new Error(`Unsupported file type ${node['type']}`)
   }
   if (node.perm) {
     await fsp.chmod(path, node.perm)
