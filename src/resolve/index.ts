@@ -17,10 +17,9 @@ declare module '..' {
 
 declare module '../events' {
   interface Events {
-    'download/start'(): void
-    'internal/download/cancel'(): void
-    'failed'(error: Error): void
+    'check/start'(): void
     'check/failed'(error: Error): void
+    'download/start'(): void
     'download/done'(): void
     'download/failed'(error: Error): void
     'download/composable/start'(composable: Nereid.Composable, source: Source): void
@@ -30,6 +29,9 @@ declare module '../events' {
     'link/failed'(error: Error): void
     'link/done'(): void
     'done'(): void
+    'failed'(error: Error): void
+    'internal/download/cancel'(): void
+    'internal/download/pause'(): void
   }
 }
 
@@ -95,20 +97,18 @@ function createSource(src: string, options: ResolveOptions) {
 
 async function startSync(state: State, srcs: string[], bucket: string, options: ResolveOptions) {
   state.status = 'checking'
-  state.progress = () => -1
+  state.progress = () => 0
 
   state.pause = async () => {
     return new Promise(resolve => {
       switch (state.status) {
         case 'checking':
-          state.once('download/start', async () => {
-            state.pause()
-            resolve()
-          })
+          state.once('download/start', async () => state.pause().then(resolve))
           return
         case 'downloading':
           // will check the status in download function
           state.status = 'pause'
+          state.emit('internal/download/pause')
           resolve()
           return
         default:
@@ -125,7 +125,7 @@ async function startSync(state: State, srcs: string[], bucket: string, options: 
     return new Promise(resolve => {
       switch (state.status) {
         case 'checking':
-          state.once('download/start', () => state.cancel())
+          state.once('download/start', () => state.cancel().then(resolve))
           return
         case 'downloading':
           // will check the status in download function, too
@@ -149,6 +149,7 @@ async function startSync(state: State, srcs: string[], bucket: string, options: 
     }
   }
 
+  state.emit('check/start')
   const sources = srcs
     .map(src => createSource(src, options))
     .filter(src => {

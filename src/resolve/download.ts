@@ -15,6 +15,9 @@ export async function *download<I>(
   state.on('internal/download/cancel', () => {
     if (tasks) tasks.forEach(task => task.stop())
   })
+  state.on('internal/download/pause', () => {
+    if (tasks) tasks.forEach(task => task.pause())
+  })
 
   state.status = 'downloading'
   state.emit('download/start')
@@ -53,9 +56,9 @@ export async function *download<I>(
     }
 
     if (state.status as any === 'pause') {
-      tasks.forEach(task => task.pause())
       yield
     }
+
     if (state.status as any === 'canceled') return
 
     const resolves: Function[] = []
@@ -109,6 +112,7 @@ export async function *download<I>(
         state.emit('failed', error)
         return
       } else {
+        task.current = 0
         task.composable.retry--
         composables.push(task.composable)
         state.emit('download/composable/retry', task.composable, task.source)
