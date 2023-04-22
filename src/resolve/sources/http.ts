@@ -24,6 +24,7 @@ export class HttpTask extends Task<null> {
     if (this.current !== 0) headers['Range'] = `bytes=${this.current}-`
 
     axios.get(this.url, {
+      headers,
       timeout: this.timeout,
       signal: this.abort.signal,
       responseType: 'stream',

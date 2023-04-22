@@ -46,8 +46,6 @@ export abstract class Task<T> {
   done() {
     this.status = 'done'
     this.resolve?.()
-    this.future = null
-    this.resolve = null
   }
   abstract _start(): void
   abstract _pause(): void

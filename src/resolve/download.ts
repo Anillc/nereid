@@ -77,6 +77,7 @@ export async function *download<I>(
     switch (task.status) {
       case 'failed':
         tasks.splice(i, 1)
+        task.current = 0
         task.source.weight -= 1
         retry = true
         break
@@ -112,7 +113,6 @@ export async function *download<I>(
         state.emit('failed', error)
         return
       } else {
-        task.current = 0
         task.composable.retry--
         composables.push(task.composable)
         state.emit('download/composable/retry', task.composable, task.source)
