@@ -28,7 +28,7 @@ declare module '../events' {
     'link/start'(): void
     'link/failed'(error: Error): void
     'link/done'(): void
-    'done'(): void
+    'done'(path: string): void
     'failed'(error: Error): void
     'internal/download/cancel'(): void
     'internal/download/pause'(): void
@@ -191,9 +191,9 @@ async function startSync(state: State, srcs: string[], bucket: string, options: 
   }
   next()
   state.on('download/done', async () => {
-    await link(state, checked[0][0], bucket, options)
+    const path = await link(state, checked[0][0], bucket, options)
     if (state.status === 'failed') return
     state.status = 'done'
-    state.emit('done')
+    state.emit('done', path)
   })
 }

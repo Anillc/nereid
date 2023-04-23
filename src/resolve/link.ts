@@ -12,13 +12,14 @@ export async function link(
   state.emit('link/start')
   const root = index.buckets[bucket]
   try {
-    await buildBucket(root, options.output, options, index.hashMode)
+    const path = await buildBucket(root, options.output, options, index.hashMode)
+    state.emit('link/done')
+    return path
   } catch (error) {
     state.status = 'failed'
     state.emit('link/failed', error)
     state.emit('failed', error)
   }
-  state.emit('link/done')
 }
 
 // TODO: write to tmp and move
@@ -27,9 +28,9 @@ async function buildBucket(
   prefix: string,
   options: ResolveOptions,
   hashMode: string
-) {
+): Promise<string> {
   const path = `${prefix}/${node.name}`
-  if (await exists(path)) return
+  if (await exists(path)) return path
   if (node.type === 'folder') {
     await fsp.mkdir(path)
     for (const child of node.files) {
@@ -45,6 +46,7 @@ async function buildBucket(
   if (node.perm) {
     await fsp.chmod(path, node.perm)
   }
+  return path
 }
 
 async function writeFile(
