@@ -31,7 +31,7 @@ export async function build(src: string, dst: string, options?: BuildOptions) {
       composables: [],
     }
   }
-  const output = `${dst}/composables`
+  const output = `${dst}/store`
   await fsp.mkdir(output, { recursive: true })
 
   const map = new Map(index.composables.map(composable => [composable.hash, composable]))

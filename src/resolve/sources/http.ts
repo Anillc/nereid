@@ -73,7 +73,7 @@ export function createHttpSource(src: string, timeout: number, output: string): 
   function task(composable: Nereid.Composable) {
     return new HttpTask(
       source, composable, `${output}/store/${composable.hash}`,
-      `${src}/composables/${composable.hash}`, timeout, 
+      `${src}/store/${composable.hash}`, timeout, 
     )
   }
   return source

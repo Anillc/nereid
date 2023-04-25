@@ -72,7 +72,7 @@ export function createFileSource(src: string, output: string): Source {
   function task(composable: Nereid.Composable) {
     return new FileTask(
       source, composable, `${output}/store/${composable.hash}`, 
-      `${base}/composables/${composable.hash}`,
+      `${base}/store/${composable.hash}`,
     )
   }
   return source
