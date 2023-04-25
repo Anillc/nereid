@@ -1,12 +1,11 @@
 import { promises as fsp, Stats } from 'fs'
 import { basename, resolve } from 'path'
 import { Nereid } from '.'
-import { exists, hashFile, hashText, visitAsync } from './utils'
+import { exists, hashFile, hashText } from './utils'
 
 export interface BuildOptions {
   hashMode?: 'nix'
   chunkSize?: number
-  parallel?: number
   index?: string
   bucket?: string
 }
