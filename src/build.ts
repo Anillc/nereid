@@ -35,6 +35,10 @@ export async function build(src: string, dst: string, options?: BuildOptions) {
   await fsp.mkdir(output, { recursive: true })
 
   const map = new Map(index.composables.map(composable => [composable.hash, composable]))
+  const stat = await fsp.lstat(src)
+  if (!stat.isDirectory()) {
+    throw new Error('path should be a folder.')
+  }
   const tree = await buildTree(src, output, map, options)
   index.buckets[options.bucket] = tree
   index.composables = [...map.values()]
@@ -66,7 +70,6 @@ async function buildTree(
     return {
       name, hash, to,
       size: stat.size,
-      perm: stat.mode,
       type: 'symlink',
     }
   } else if (stat.isDirectory()) {

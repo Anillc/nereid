@@ -12,7 +12,7 @@ export async function link(
   state.emit('link/start')
   const root = index.buckets[bucket]
   try {
-    const path = await buildBucket(root, options.output, options, index.hashMode)
+    const path = await buildBucket(root, options.output, options, index.hashMode, bucket)
     state.emit('link/done')
     return path
   } catch (error) {
@@ -27,14 +27,15 @@ async function buildBucket(
   node: Nereid.Node,
   prefix: string,
   options: ResolveOptions,
-  hashMode: string
+  hashMode: string,
+  top: string,
 ): Promise<string> {
-  const path = `${prefix}/${node.name}`
+  const path = top ? `${prefix}/${top}` : `${prefix}/${node.name}`
   if (await exists(path)) return path
   if (node.type === 'folder') {
     await fsp.mkdir(path)
     for (const child of node.files) {
-      await buildBucket(child, path, options, hashMode)
+      await buildBucket(child, path, options, hashMode, null)
     }
   } else if (node.type === 'file') {
     await writeFile(path, node.composables, options, node.hash, hashMode)
