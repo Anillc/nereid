@@ -5,7 +5,7 @@ import { closure, exists } from '../utils'
 import { download } from './download'
 import { link } from './link'
 import { Task } from './task'
-import { createFileSource, createHttpSource } from './sources'
+import { createFileSource, createHttpSource, createNpmSource } from './sources'
 
 declare module '..' {
   namespace Nereid {
@@ -66,7 +66,7 @@ export function sync(srcs: string[], bucket: string, options?: ResolveOptions) {
   options = {
     timeout: 30000,
     checkFileHash: false,
-    index: '/nereid.json',
+    index: 'nereid.json',
     output: process.cwd() + '/nereid',
     maxTaskCount: 10,
     retry: 3,
@@ -87,6 +87,9 @@ function createSource(src: string, options: ResolveOptions) {
       break
     case 'file':
       source = createFileSource(src, options.output)
+      break
+    case 'npm':
+      source = createNpmSource(src, options.timeout, options.output)
       break
     default:
       return
@@ -165,6 +168,7 @@ async function startSync(state: State, srcs: string[], bucket: string, options: 
       source.index = index
       return [index, composables, source] as const
     } catch (error) {
+      console.error(error)
       return null
     }
   })

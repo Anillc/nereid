@@ -7,7 +7,7 @@ export abstract class Task<T> {
   resolve: Function
   private future: Promise<void>
   // downloaded in bytes
-  current = 0
+  abstract current: number
 
   public constructor(
     public source: Source<T>,

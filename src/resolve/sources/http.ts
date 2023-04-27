@@ -67,7 +67,7 @@ export class HttpTask extends Task<null> {
 export function createHttpSource(src: string, timeout: number, output: string): Source {
   const source: Source<null> = { src, fetchIndex, task }
   async function fetchIndex(index: string) {
-    const { data }: AxiosResponse<Nereid.Index<null>> = await axios.get(`${src}${index}`)
+    const { data }: AxiosResponse<Nereid.Index<null>> = await axios.get(`${src}/${index}`)
     return data
   }
   function task(composable: Nereid.Composable) {

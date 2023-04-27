@@ -15,7 +15,7 @@ export async function build(src: string, dst: string, options?: BuildOptions) {
     hashMode: 'nix',
     // 10MiB
     chunkSize: 10 * 1024 * 1024,
-    index: '/nereid.json',
+    index: 'nereid.json',
     bucket: basename(src),
     ...options,
   }

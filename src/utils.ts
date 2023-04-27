@@ -1,5 +1,6 @@
 import { createReadStream, promises as fsp } from 'fs'
 import { createHash } from 'crypto'
+import { Duplex } from 'stream'
 import { Nereid } from '.'
 
 export function visit<T>(
@@ -120,5 +121,35 @@ export async function exists(path: string) {
     return true
   } catch (e) {
     return false
+  }
+}
+
+export class DummyWriter extends Duplex {
+  promise: Promise<Buffer>
+  reject: (error: Error) => void
+  private resolve: (buffer: Buffer) => void
+  private chunks: Buffer[] = []
+
+  constructor() {
+    super()
+    this.promise = new Promise((resolve, reject) => {
+      this.resolve = resolve
+      this.reject = reject
+    })
+    this.on('close', () => this.resolve(Buffer.concat(this.chunks)))
+    this.on('error', this.reject)
+  }
+
+  _write(chunk: any, encoding: BufferEncoding, callback: (error?: Error) => void) {
+    this.chunks.push(Buffer.from(chunk))
+    callback()
+  }
+
+  _read() {
+    this.push(null)
+  }
+
+  count() {
+    return this.chunks.reduce((acc, x) => acc + x.length, 0)
   }
 }

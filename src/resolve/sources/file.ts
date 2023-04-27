@@ -66,7 +66,7 @@ export function createFileSource(src: string, output: string): Source {
   const base = src.substring(7)
   const source: Source<null> = { src, fetchIndex, task }
   async function fetchIndex(index: string) {
-    const content = await fsp.readFile(`${base}${index}`, 'utf-8')
+    const content = await fsp.readFile(`${base}/${index}`, 'utf-8')
     return JSON.parse(content)
   }
   function task(composable: Nereid.Composable) {
