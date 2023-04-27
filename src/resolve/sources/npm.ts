@@ -1,7 +1,8 @@
 
 import { promises as fsp } from 'fs'
+import { createGunzip } from 'zlib'
 import axios from 'axios'
-import { extract } from 'tar'
+import tar from 'tar-stream'
 import { Task } from '../task'
 import { Source } from '..'
 import { Nereid } from '../..'
@@ -88,11 +89,18 @@ async function fetchNpmResource(
   signal?.addEventListener('abort', () => {
     writer.reject(new Error('aborted'))
   })
-  stream.pipe(extract({
-    transform(entry) {
-      if (entry.path !== `package/${name}`) return
-      return writer
-    },
-  }))
+  const extract = tar.extract()
+  extract.on('entry', (headers, stream, next) => {
+    if (headers.name !== `package/${name}`) {
+      stream.on('end', next)
+      stream.resume()
+      return
+    }
+    stream.on('end', () => {
+      writer.end()
+    })
+    stream.pipe(writer)
+  })
+  stream.pipe(createGunzip()).pipe(extract)
   return writer
 }

@@ -136,8 +136,6 @@ export class DummyWriter extends Duplex {
       this.resolve = resolve
       this.reject = reject
     })
-    this.on('close', () => this.resolve(Buffer.concat(this.chunks)))
-    this.on('error', this.reject)
   }
 
   _write(chunk: any, encoding: BufferEncoding, callback: (error?: Error) => void) {
@@ -147,6 +145,11 @@ export class DummyWriter extends Duplex {
 
   _read() {
     this.push(null)
+  }
+
+  _final(callback: (error?: Error) => void): void {
+    this.resolve(Buffer.concat(this.chunks))
+    callback()
   }
 
   count() {

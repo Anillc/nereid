@@ -64,7 +64,7 @@ export interface ResolveOptions {
 
 export function sync(srcs: string[], bucket: string, options?: ResolveOptions) {
   options = {
-    timeout: 30000,
+    timeout: 300000,
     checkFileHash: false,
     index: 'nereid.json',
     output: process.cwd() + '/nereid',
