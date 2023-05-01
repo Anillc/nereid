@@ -195,9 +195,14 @@ async function startSync(state: State, srcs: string[], bucket: string, options: 
   }
   next()
   state.on('download/done', async () => {
-    const path = await link(state, checked[0][0], bucket, options)
-    if (state.status === 'failed') return
-    state.status = 'done'
-    state.emit('done', path)
+    try {
+      const path = await link(state, checked[0][0], bucket, options)
+      state.status = 'done'
+      state.emit('done', path)
+    } catch (error) {
+      state.status = 'failed'
+      state.emit('link/failed', error)
+      state.emit('failed', error)
+    }
   })
 }

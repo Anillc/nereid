@@ -11,15 +11,9 @@ export async function link(
 ) {
   state.emit('link/start')
   const root = index.buckets[bucket]
-  try {
-    const path = await buildBucket(root, options.output, options, index.hashMode, bucket)
-    state.emit('link/done')
-    return path
-  } catch (error) {
-    state.status = 'failed'
-    state.emit('link/failed', error)
-    state.emit('failed', error)
-  }
+  const path = await buildBucket(root, options.output, options, index.hashMode, bucket)
+  state.emit('link/done')
+  return path
 }
 
 // TODO: write to tmp and move
