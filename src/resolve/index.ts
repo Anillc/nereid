@@ -3,7 +3,7 @@ import { promises as fs } from 'fs'
 import { Nereid } from '..'
 import { closure, exists } from '../utils'
 import { download } from './download'
-import { link } from './link'
+import { link, topPath } from './link'
 import { Task } from './task'
 import { createFileSource, createHttpSource, createNpmSource } from './sources'
 
@@ -100,7 +100,7 @@ function createSource(src: string, options: ResolveOptions) {
 
 async function startSync(state: State, srcs: string[], bucket: string, options: ResolveOptions) {
   state.status = 'checking'
-  state.progress = () => 0
+  state.progress = () => state.status === 'done' ? 1 : 0
 
   state.pause = async () => {
     return new Promise(resolve => {
@@ -142,16 +142,6 @@ async function startSync(state: State, srcs: string[], bucket: string, options: 
     })
   }
 
-  const store = `${options.output}/store`
-  if (!await exists(store)) {
-    await fs.mkdir(store, { recursive: true })
-    if (!exists(store)) {
-      state.status = 'failed'
-      state.emit('failed', new Error(`failed to access ${store}`))
-      return
-    }
-  }
-
   state.emit('check/start')
   const sources = srcs
     .map(src => createSource(src, options))
@@ -184,6 +174,23 @@ async function startSync(state: State, srcs: string[], bucket: string, options: 
     return
   }
 
+  const path = topPath(options.output, bucket, checked[0][0].buckets[bucket])
+  if (await exists(path)) {
+    state.status = 'done'
+    state.emit('done', path)
+    return
+  }
+
+  const store = `${options.output}/store`
+  if (!await exists(store)) {
+    await fs.mkdir(store, { recursive: true })
+    if (!exists(store)) {
+      state.status = 'failed'
+      state.emit('failed', new Error(`failed to access ${store}`))
+      return
+    }
+  }
+
   const composables = checked[0][1]
   const downloader = download(state, avaliable, composables, options)
   function next() {
@@ -196,7 +203,7 @@ async function startSync(state: State, srcs: string[], bucket: string, options: 
   next()
   state.on('download/done', async () => {
     try {
-      const path = await link(state, checked[0][0], bucket, options)
+      await link(state, checked[0][0], bucket, options)
       state.status = 'done'
       state.emit('done', path)
     } catch (error) {

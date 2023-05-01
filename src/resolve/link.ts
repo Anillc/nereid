@@ -3,6 +3,10 @@ import { ResolveOptions, State } from '.'
 import { Nereid } from '..'
 import { exists, validate } from '../utils'
 
+export function topPath(output: string, bucket: string, node: Nereid.Node) {
+  return `${output}/${bucket}-${node.hash}`
+}
+
 export async function link(
   state: State,
   index: Nereid.Index<unknown>,
@@ -11,9 +15,8 @@ export async function link(
 ) {
   state.emit('link/start')
   const root = index.buckets[bucket]
-  const path = await buildBucket(root, options.output, options, index.hashMode, bucket)
+  await buildBucket(root, options.output, options, index.hashMode, bucket)
   state.emit('link/done')
-  return path
 }
 
 // TODO: write to tmp and move
@@ -23,8 +26,8 @@ async function buildBucket(
   options: ResolveOptions,
   hashMode: string,
   top: string,
-): Promise<string> {
-  const path = top ? `${prefix}/${top}` : `${prefix}/${node.name}`
+) {
+  const path = top ? topPath(prefix, top, node) : `${prefix}/${node.name}`
   if (await exists(path)) return path
   if (node.type === 'folder') {
     await fsp.mkdir(path)
@@ -41,7 +44,6 @@ async function buildBucket(
   if (node.perm) {
     await fsp.chmod(path, node.perm)
   }
-  return path
 }
 
 async function writeFile(
