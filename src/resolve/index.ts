@@ -64,7 +64,7 @@ export interface ResolveOptions {
 
 export function sync(srcs: string[], bucket: string, options?: ResolveOptions) {
   options = {
-    timeout: 300000,
+    timeout: 30000,
     checkFileHash: false,
     index: 'nereid.json',
     output: process.cwd() + '/nereid',
@@ -78,24 +78,28 @@ export function sync(srcs: string[], bucket: string, options?: ResolveOptions) {
 }
 
 function createSource(src: string, options: ResolveOptions) {
-  const match = /^(\w+):\/\//.exec(src)
-  if (!match) return
-  let source: Source
-  switch (match[1]) {
-    case 'http':
-      source = createHttpSource(src, options.timeout, options.output)
-      break
-    case 'file':
-      source = createFileSource(src, options.output)
-      break
-    case 'npm':
-      source = createNpmSource(src, options.timeout, options.output)
-      break
-    default:
-      return
+  try {
+    let source: Source
+    const url = new URL(src)
+    switch (url.protocol) {
+      case 'http:':
+        source = createHttpSource(src, options.timeout, options.output)
+        break
+      case 'file:':
+        source = createFileSource(src, options.output)
+        break
+      case 'npm:':
+        source = createNpmSource(src, url, options.timeout, options.output)
+        break
+      default:
+        return
+    }
+    source.weight = 10
+    return source
+  } catch (error) {
+    console.error(error)
+    return
   }
-  source.weight = 10
-  return source
 }
 
 async function startSync(state: State, srcs: string[], bucket: string, options: ResolveOptions) {

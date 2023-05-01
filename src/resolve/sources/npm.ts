@@ -15,7 +15,6 @@ export class NpmTask extends Task<null> {
     public source: Source<null>,
     public composable: Nereid.Composable,
     public output: string,
-    public url: string,
     public timeout: number,
     public registry: string,
     public org: string,
@@ -26,8 +25,10 @@ export class NpmTask extends Task<null> {
   _start() {
     this.abort = new AbortController()
     const writer = fetchNpmResource(
-      this.registry, this.org, this.composable.hash,
-      this.timeout, this.abort.signal,
+      this.registry, this.org,
+      this.composable.hash,
+      this.timeout,
+      this.abort.signal,
     )
     writer.then((writer) => {
       this.writer = writer
@@ -55,9 +56,8 @@ export class NpmTask extends Task<null> {
   }
 }
 
-export function createNpmSource(src: string, timeout: number, output: string): Source {
+export function createNpmSource(src: string, url: URL, timeout: number, output: string): Source {
   // npm://org?registry=xxx
-  const url = new URL(src)
   const org = url.host
   const registry = url.searchParams.get('registry') || 'https://registry.npmjs.com'
   const source: Source<null> = { src, fetchIndex, task }
@@ -68,8 +68,9 @@ export function createNpmSource(src: string, timeout: number, output: string): S
   }
   function task(composable: Nereid.Composable) {
     return new NpmTask(
-      source, composable, `${output}/store/${composable.hash}`,
-      `${src}/store/${composable.hash}`, timeout, registry, org,
+      source, composable,
+      `${output}/store/${composable.hash}`,
+      timeout, registry, org,
     )
   }
   return source
