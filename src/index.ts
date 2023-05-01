@@ -38,5 +38,5 @@ export namespace Nereid {
 }
 
 export * from './resolve'
-export * from './build'
 export * from './events'
+export * from './utils'
