@@ -1,6 +1,6 @@
 {
   "name": "nereid",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "A download library",
   "main": "lib/index.js",
   "repository": "https://github.com/Anillc/nereid.git",
