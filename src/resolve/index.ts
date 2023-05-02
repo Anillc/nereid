@@ -83,6 +83,7 @@ function createSource(src: string, options: ResolveOptions) {
     const url = new URL(src)
     switch (url.protocol) {
       case 'http:':
+      case 'https:':
         source = createHttpSource(src, options.timeout, options.output)
         break
       case 'file:':

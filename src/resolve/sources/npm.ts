@@ -15,9 +15,10 @@ export class NpmTask extends Task<null> {
     public source: Source<null>,
     public composable: Nereid.Composable,
     public output: string,
-    public timeout: number,
+    public fullname: string,
+    public pkgname: string,
     public registry: string,
-    public org: string,
+    public timeout: number,
   ) {
     super(source, composable, output)
   }
@@ -25,9 +26,9 @@ export class NpmTask extends Task<null> {
   _start() {
     this.abort = new AbortController()
     const writer = fetchNpmResource(
-      this.registry, this.org,
-      this.composable.hash,
-      this.timeout,
+      this.fullname, this.pkgname, this.composable.hash,
+      `0.0.0-${this.composable.hash}`,
+      this.registry, this.timeout,
       this.abort.signal,
     )
     writer.then((writer) => {
@@ -57,12 +58,16 @@ export class NpmTask extends Task<null> {
 }
 
 export function createNpmSource(src: string, url: URL, timeout: number, output: string): Source {
-  // npm://org?registry=xxx
-  const org = url.host
+  // npm://package-name?registry=xxx
+  const fullname = url.pathname ? `@${url.host}${url.pathname}` : url.host
+  const pkgname = url.pathname ? url.pathname.slice(1) : url.host
   const registry = url.searchParams.get('registry') || 'https://registry.npmjs.com'
   const source: Source<null> = { src, fetchIndex, task }
   async function fetchIndex(index: string) {
-    const writer = await fetchNpmResource(registry, org, index, timeout)
+    const versions = await fetchVersions(fullname, registry, timeout)
+    if (versions.length === 0) throw new Error('index not found')
+    const indexVersion = versions.find(version => /0\.0\.0-latest-(\d+)/.test(version))
+    const writer = await fetchNpmResource(fullname, pkgname, index, indexVersion, registry, timeout)
     const buffer = await writer.promise
     return JSON.parse(buffer.toString())
   }
@@ -70,21 +75,22 @@ export function createNpmSource(src: string, url: URL, timeout: number, output: 
     return new NpmTask(
       source, composable,
       `${output}/store/${composable.hash}`,
-      timeout, registry, org,
+      fullname, pkgname, registry, timeout,
     )
   }
   return source
 }
 
 async function fetchNpmResource(
+  fullname: string,
+  pkgname: string,
+  filename: string,
+  version: string,
   registry: string,
-  org: string,
-  name: string,
   timeout?: number,
   signal?: AbortSignal,
 ): Promise<DummyWriter> {
-  const { data } = await axios.get(`${registry}/@${org}/${name}`, { signal, timeout })
-  const tarball: string = (Object.values(data.versions).at(-1) as any).dist.tarball
+  const tarball = `${registry}/${fullname}/-/${pkgname}-${version}.tgz`
   const { data: stream } = await axios.get(tarball, { responseType: 'stream', signal, timeout })
   const writer = new DummyWriter()
   signal?.addEventListener('abort', () => {
@@ -92,7 +98,7 @@ async function fetchNpmResource(
   })
   const extract = tar.extract()
   extract.on('entry', (headers, stream, next) => {
-    if (headers.name !== `package/${name}`) {
+    if (headers.name !== `package/${filename}`) {
       stream.on('end', next)
       stream.resume()
       return
@@ -104,4 +110,16 @@ async function fetchNpmResource(
   })
   stream.pipe(createGunzip()).pipe(extract)
   return writer
+}
+
+async function fetchVersions(name: string, registry: string, timeout?: number) {
+  try {
+    const { data } = await axios.get(`${registry}/${name}`, { timeout })
+    return Object.keys(data.versions).reverse()
+  } catch (error) {
+    if (error?.code === 'E404') {
+      return []
+    }
+    throw error
+  }
 }
