@@ -62,8 +62,8 @@ export interface ResolveOptions {
   retry?: number
 }
 
-export function sync(srcs: string[], bucket: string, options?: ResolveOptions) {
-  options = {
+function createOptions(options?: ResolveOptions) {
+  return {
     timeout: 30000,
     checkFileHash: false,
     index: 'nereid.json',
@@ -72,9 +72,19 @@ export function sync(srcs: string[], bucket: string, options?: ResolveOptions) {
     retry: 3,
     ...options,
   }
+}
+
+export function sync(srcs: string[], bucket: string, options?: ResolveOptions) {
+  options = createOptions(options)
   const state = new EventEmitter() as State
   startSync(state, srcs, bucket, options)
   return state
+}
+
+export async function fetchIndex(src: string, options?: ResolveOptions) {
+  options = createOptions(options)
+  const source = createSource(src, options)
+  return await source.fetchIndex(options.index)
 }
 
 function createSource(src: string, options: ResolveOptions) {
